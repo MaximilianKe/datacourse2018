@@ -94,7 +94,7 @@ do_it <- function(ID, path){
   }
   
   return(result_total)
-  write.table(result_total, "C:/Users/X230/Desktop/Datamangement kurs/Climtae Change BW/BW_Climate_resultsINDEX.txt")
+ 
 }
 #So this was the Master function and now you can run it with your personal ID and your personal path as defined at the top.
 complete_table <- do_it(ID = ID, path = path)
