@@ -58,4 +58,4 @@ return(output)
 # Now replace data_name with the name of your data and insert your station ID to run the function.
 # The first output in the list is the frost days mean(Fd), the second value is the rate of change.
 
-fun_frostdays(data_name,2814)
+# fun_frostdays(data_name,2814)

@@ -77,9 +77,9 @@ if(output == "periodData"){
 
 } # end of function
 
-library(readr)
-BW_C <- read_tsv("BigData/BW_Climate_1977_2016.txt")
-meta <- read_tsv("BigData/BW_ClimateStations_meta.txt")
-
-result <- CDD(BW_C, 257)
+# library(readr)
+# BW_C <- read_tsv("BigData/BW_Climate_1977_2016.txt")
+# meta <- read_tsv("BigData/BW_ClimateStations_meta.txt")
+# 
+# result <- CDD(BW_C, 257)
 
