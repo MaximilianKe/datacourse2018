@@ -1,39 +1,31 @@
-Tn90 <- function(x,y){            
-  # function to calculate indicator 194 "Tn90"
-  # x = Tmin
-  # y = date
+
+Tn90 <- function(x,ID){            
+
+# The function works with the whole data set and the station-ID 
+# and constructs a list with the years and the Tn90 index 
+# as well as the average and the rate of change 
   
-  # packages required
+  
+# ----- packages required -----
   require(tidyverse)
   require(lubridate)
- 
-# ----- breaks -----
-  if(length(y) != length(x)) {
-    stop("y and x must be the same length")
-  }
-    
-    
-  if(!is.numeric(x)){
-    stop("x must be 'numeric'")
-  }
   
-  if(!is.Date(y)) {
-    stop("y must be 'date'")
-  }   
-  
+    
 # ----- prepare variables ------
-    df <- data.frame(x,y) 
+    df <- x %>% filter(id==ID) 
     
-    df$year <- year(df$y)
+    df$year <- year(df$date)
+    
     
 # ----- quality check -----   
-     df <- df %>% group_by(year) %>% filter(sum(is.na(x))<60)
-    
+     df <- df %>% group_by(year) %>% filter(sum(is.na(TNK))<60)
+ 
+       
 # ----- analysis -----    
-    q <- quantile(df$x,0.9,na.rm=TRUE)
+    q <- quantile(df$TNK,0.9,na.rm=TRUE)
     
     Tn90df <- df  %>% group_by(year) %>% 
-      summarise(Tn90 = length(which(x > q))/length(x)*100)
+      summarise(Tn90 = length(which(TNK > q))/length(TNK)*100)
     
     Tn90df2 <- Tn90df %>% filter(year >= 1997, year <= 2016)
     
