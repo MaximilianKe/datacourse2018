@@ -1,0 +1,287 @@
+---
+title: "Advanced SQL"
+author: "Mirko Mälicke"
+output:
+  html_notebook:
+    theme: flatly
+    toc: yes
+  html_document:
+    theme: flatly
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r, echo=FALSE, include=T}
+# require the package
+if (!("RPostgreSQL" %in% installed.packages())){
+  install.packages("RPostgreSQL")
+}
+if (!("getPass" %in% installed.packages())){
+  install.packages("getPass")
+}
+require(RPostgreSQL)
+require(getPass)
+require(ggplot2)
+
+# establish the connection
+drv <- dbDriver('PostgreSQL')
+con <- dbConnect(drv, host='openhydro.de', port=5432, user=getPass('Provide the user'), 
+                 password=getPass('Provide the password'), dbname='dwd')
+```
+
+```{sql connection=con}
+
+select * from data limit 20
+```
+Build a temporary table called *name_precipitation*, where you should replace *name* with your actual name. This table shall contain 
+all measurements from the data table holding precipitation information. 
+```{sql connection=con}
+create temporary table elisa_precipitation as
+select id, date, value as precipitation from data where variable_id=1
+```
+```{sql connection=con}
+select * from elisa_precipitation limit 20
+```
+
+Create a view on this table that holds monthly statistics for every station id. Calculate the monthly sum, the highest observed daily 
+rainfall sum, the number of extreme rainfalls (daily precipitation > 30).
+```{sql connection=con}
+create temporary view elisa_precipitation_month as
+select id, date_trunc('month', date) as month,
+sum(precipitation) as sum,
+max(precipitation) as max,
+count(case when precipitation > 30.0 then precipitation end) as n_extreme_pp
+from elisa_precipitation group by id, month 
+```
+```{sql connection=con}
+select * from elisa_precipitation_month limit 10
+```
+
+Create a view on the last view, that aggregates the same statistics for anual overviews.
+```{sql connection=con}
+create temporary view elisa_precipitation_year as
+select id, date_trunc('year', month) as year,
+sum(sum) as sum,
+max(sum) as max,
+sum(n_extreme_pp) as extreme_in_year
+from elisa_precipitation_month group by id, year
+```
+```{sql connection=con}
+select * from elisa_precipitation_year * limit 10
+```
+
+Which station observed the highest monthly rainfall sum?
+```{sql connection=con}
+select e.id as station, name, sum as max_monthly_rainfall_sum
+from elisa_precipitation_month e 
+join stations s on s.id=e.id
+order by sum desc limit 1
+```
+
+Which station observed the most extreme rainfall occurences within one month? 
+```{sql connection=con}
+select e.id as station_with_max_pp_month, name, n_extreme_pp as number_of_extreme_events_within_month
+from elisa_precipitation_month e
+join stations s on s.id=e.id
+order by n_extreme_pp desc limit 1
+
+```
+Which within one year?
+```{sql connection=con}
+select e.id as station_with_max_pp_year, name, extreme_in_year as number_of_extreme_events_within_year
+from elisa_precipitation_year e 
+join stations s on s.id=e.id
+order by extreme_in_year desc limit 1
+
+```
+Which was the year with the most overall extreme rainfall occurences? (ignoring the station)
+```{sql connection=con}
+select year as year_with_max_extreme_events, extreme_in_year as number_of_extreme_events_within_year
+from elisa_precipitation_year order by extreme_in_year desc limit 1
+```
+
+Which is the station with the most extreme rainfall events within this year (from the last chunk)? 
+
+```{sql connection=con}
+select date_trunc('year', year), e.id as station, name
+from elisa_precipitation_year e
+join stations s on s.id=e.id
+order by extreme_in_year desc limit 1
+```
+Which one with the most extreme rainfall events overall?
+```{sql connection=con}
+select e.id as station_with_most_extreme_rainfall_events_id, name
+from elisa_precipitation_year e
+join stations s on s.id=e.id
+order by extreme_in_year desc limit 1
+```
+
+Create a view, that includes only the records from _data_ which fulfilled the extreme rainfall constraint.
+
+```{sql connection=con}
+
+create temporary view e_extreme_rain_events as
+select id, date, value as precipitation from data where variable_id=1 and value > 30.0;
+
+```
+```{sql connection=con}
+select * from e_extreme_rain_events limit 50
+```
+
+Join another column to this view, that holds the _type of precipitation_ variable. 
+```{sql connection=con}
+
+select d.id as id_station, d.date, precipitation, value as type_of_pp from e_extreme_rain_events e 
+join data d 
+on d.id=e.id
+where d.variable_id=3 and d.date=e.date
+limit 100
+```
+From this Join, create a histogram of _type of precipitation_. Calculate an overall histogram.
+```{sql connection=con}
+
+select value as type_of_precipitation,
+count(value) from e_extreme_rain_events e 
+join data d 
+on d.id=e.id
+where d.variable_id=3 and d.date=e.date
+group by value
+```
+
+**OPTIONAL:** Can you redo the last step and do the same analysis for 'per station' histograms?
+
+```{sql connection=con}
+create temporary table events_per_station as
+select d.id as station,
+count(*) as N_extreme_events from e_extreme_rain_events e 
+join data d 
+on d.id=e.id
+where d.variable_id=3 and d.date=e.date
+group by d.id order by station
+```
+```{sql connection=con}
+select * from events_per_station limit 10
+```
+
+Use the insights of the last two chunks and write two sentences about the _type of precipitation_ variable. How useful is it? 
+<div class="alert alert-info">
+Answer: Type of precipitation 1 and 6 refer both to liquid precipitation. Therefore, most of the extreme events occur as rain. Type of precipitation number 4, solid and liquid precipitation (Schneeregen) follows the rain in frequency. Least common are extreme events only as snow, represented by type of precipitation number 7. Type of precipitation number 4 refers to unknown type of precipitation. 
+Type of precipitation is not useful to understand whether the "extreme event" occurred distributed during the day or in a quick storm. However, it is useful to understand which type of precipitation is more frequent to find in these extreme events. 
+
+
+</div>
+
+Load the anual overview on extreme rainfalls into a data.frame and plot a violine plot of the amount of extreme rainfalls per station.
+```{sql connection=con, output.var="rain.annual"}
+select * from elisa_precipitation_year order by year asc
+```
+
+```{r}
+#View(rain.annual)
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+dttm= ymd(rain.annual$date)
+rain.annual %>%
+ggplot(mapping = aes(x=id, y=extreme_in_year))+
+  geom_violin(aes(group=id))
+
+rain.annual %>% filter(id >= 250 & id < 300) %>%
+ggplot(mapping = aes(x=id, y=extreme_in_year))+
+  geom_violin(aes(group=id)) +
+  ggtitle("Number of extreme events per station") + # add a title
+  ylab("N extreme events per year") + # add a y-axis label
+  xlab("Station ID")  # add a x-axis label
+  
+
+```
+
+Redo the last exercise for the monthly extreme rainfall counts. Does this change the picture?
+
+```{sql connection=con, output.var="rain.monthly"}
+select * from elisa_precipitation_month order by month asc
+```
+
+```{r}
+#View(rain.monthly) 
+
+rain.monthly %>%
+ggplot(mapping = aes(x=id, y=n_extreme_pp))+
+  geom_violin(aes(group=id))
+
+rain.monthly %>% filter(id >= 250 & id < 260) %>%
+ggplot(mapping = aes(x=id, y=n_extreme_pp))+
+  geom_violin(aes(group=id)) +
+  ggtitle("Number of extreme events per station") + # add a title
+  ylab("N extreme events per month") + # add a y-axis label
+  xlab("Station ID")  # add a x-axis label
+  
+```
+<div class="alert alert-info">
+What can you say about the distribution of extreme rainfall events from these plots?
+Answer: 
+The plot shows that usually, most months do not have extreme events while the most frequent number of extreme events per month is just one event. This is reasonable since extreme events are "extreme" and therefor not usual. 
+However, at least in these two stations showed, the most frequent number of extreme events during one year are 2 to 4 events.
+
+</div>
+
+Load the locations for the used stations from the database.
+
+Plot these locations and represent any measure for annual variance in extreme rainfall events by the point size of the used locations.<br>
+```{sql connection=con}
+select s.id, name, st_x(st_transform(geometry, 4326)) as lon, st_y(st_transform(geometry, 4326)) as lat, min(e.extreme_in_year)as min, max(e.extreme_in_year) as max, stddev(e.extreme_in_year) as st_dev from stations s
+join elisa_precipitation_year e 
+on s.id=e.id
+group by s.id 
+
+
+```
+
+
+```{sql connection=con, output.var="locations"}
+select s.id, name, st_x(st_transform(geometry, 4326)) as lon, st_y(st_transform(geometry, 4326)) as lat, min(e.extreme_in_year)as min, max(e.extreme_in_year) as max, stddev(e.extreme_in_year) as st_dev from stations s
+join elisa_precipitation_year e 
+on s.id=e.id
+group by s.id 
+
+```
+
+Plot these locations and represent any measure for annual variance in extreme rainfall events by the point size of the used locations.<br>
+```{r}
+#View(locations)
+ggplot(locations, aes(x=lon, y=lat)) + geom_point(shape=18, size=locations$st_dev)
+```
+
+
+
+**OPTIONAL:** Additionally mark the station showing the most and least recorded extreme rainfalls by another marker into the same plot. (eg. use a green and a red cross or star.)
+```{r}
+library(dplyr)
+library(tidyr)
+max_station<-locations %>% filter(max==max(max))
+min_station<-locations %>% filter(min==0)
+ggplot(locations, aes(x=lon, y=lat)) + geom_point(shape=18, size=locations$st_dev)+
+  geom_point(data=min_station, aes(x=lon, y=lat), colour="green", shape=3, size=4)+
+  geom_point(data=max_station, aes(x=lon, y=lat), colour="red", shape=3, size=8)+
+  geom_text(data=max_station, label="Most recorded extreme rainfalls", vjust=2)+
+  theme(legend.position = "right")
+
+
+```
+
+How can you interpret this result?
+<div class="alert alert-info">
+Answer:
+In every station there was at least one year with no extreme events at all. 
+It is interesting that the station with the highest number of extreme rainfalls has also a high standard deviation, which may say that this station has some years with high number of extreme events and others with no or very few extreme events.  
+</div>
+
+
+
+
+
+
+
