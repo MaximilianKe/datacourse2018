@@ -51,4 +51,4 @@ return(list(average_ETR = avg, ABC=ABC))
 
 } #end of function 
 
-result  <- ETR(x, ID)
+# result  <- ETR(x, ID)
