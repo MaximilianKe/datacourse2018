@@ -11,6 +11,7 @@ Tn90 <- function(x,ID){
   require(lubridate)
   
     
+  
 # ----- prepare variables ------
     df <- x %>% filter(id==ID) 
     
