@@ -195,6 +195,11 @@ ggplot(mapping = aes(x=id, y=extreme_in_year))+
   ggtitle("Number of extreme events per station") + # add a title
   ylab("N extreme events per year") + # add a y-axis label
   xlab("Station ID")  # add a x-axis label
+
+rain.annual %>%
+ggplot(mapping = aes(x=year, y=extreme_in_year))+
+  geom_violin()+facet_wrap(~id)
+
   
 
 ```
@@ -219,6 +224,10 @@ ggplot(mapping = aes(x=id, y=n_extreme_pp))+
   ylab("N extreme events per month") + # add a y-axis label
   xlab("Station ID")  # add a x-axis label
   
+rain.monthly %>%
+ggplot(mapping = aes(x=month, y=n_extreme_pp))+
+  geom_violin()+facet_wrap(~id)
+
 ```
 <div class="alert alert-info">
 What can you say about the distribution of extreme rainfall events from these plots?

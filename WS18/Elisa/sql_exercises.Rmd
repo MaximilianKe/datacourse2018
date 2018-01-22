@@ -29,7 +29,7 @@ con <- dbConnect(drv, host='openhydro.de', port=5432, user=getPass('Provide the 
 
 Select all stations located lower than 400 meter.
 ```{sql connection=con}
-Select name from station where elevation >400
+Select name from stations where elevation >400
 ```
 
 How many stations start with the letter 'W'?
@@ -69,27 +69,33 @@ Group the vegetation_cover table by the name in vegetation_cover_description and
 
 
 ```{sql connection=con}
-select d.name, count(v.id) from vegetation_cover as v
+explain analyze select d.name, count(v.id) from vegetation_cover as v
   join vegetation_cover_description as d
   on d.id=v.description_id
   group by d.name
 limit 10
 
 ```
-A simmilar aproach to the problem buth writing it differently
+A similar approach to the problem but writing it differently
 
 ```{sql connection=con}
-select name, count(vegetation_cover.id) from vegetation_cover 
+explain analyze select name, count(vegetation_cover.id) from vegetation_cover 
 join vegetation_cover_description
 on vegetation_cover.description_id=vegetation_cover_description.id group by name limit 20
 ```
 An alternative way of solving the problem (but no the best one) that gives back the same result:
 ```{sql connection=con}
-select name, count(*) from vegetation_cover, vegetation_cover_description 
+explain analyze select name, count(*) from vegetation_cover, vegetation_cover_description 
 where vegetation_cover.description_id=vegetation_cover_description.id group by name limit 20
 
 ```
 
+The three different codes take a similar time to run, so there is no one better option among them.  
+```{sql connection=con}
+select name, count(vegetation_cover.id) from vegetation_cover 
+join vegetation_cover_description
+on vegetation_cover.description_id=vegetation_cover_description.id group by name limit 20
+```
 ### cleanup
 ```{r, include=FALSE}
 dbDisconnect(con)
