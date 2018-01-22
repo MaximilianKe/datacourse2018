@@ -1,47 +1,53 @@
+# Function for the number of frost days
+# Raymond Asimhi, Sara Doumi, Anna Dermann
+
+#To use this function;
+#Import your data
+#Scroll down to the last line of the code
+#Replace data_name with the name of your imported data
+#Change the station_id to ID number of your specific station
+#Run the code, your output will be 2 values; the first is the mean frost days 
+#and the second is the rate of change
+
+
+library(tidyverse)
+library(lubridate)
+
 # Our function for frost days(Fd)
 
 fun_frostdays <- function(bw, station_id){
   
 # 1) filter the data for the specific station ####
-merk <- bw %>% filter(id == station_id)
-
-#Rename columns
-names(merk)[3] <- "pp.h"
-names(merk)[4] <- "pp.f"
-names(merk)[5] <- "snowd"
-names(merk)[6] <- "min.t"
-names(merk)[7] <- "mean.t"
-names(merk)[8] <- "max.t"
-names(merk)[9] <- "rel.h"
+station <- bw %>% filter(id == station_id)
 
 
 # 2) Quality control ####
 
-merk$year <- year(merk$date)
+station$year <- year(station$date)
 
 # count number of NA-values
-merk3 <- merk %>%
-  group_by(year) %>% mutate(na.n = sum(is.na(min.t)))
+station3 <- station %>%
+  group_by(year) %>% mutate(na.n = sum(is.na(TNK)))
 
 # delete all years with more than 60 NA-values
-merk4 <- merk3 %>%
+station4 <- station3 %>%
   filter(na.n < 60 ) %>%
-  group_by(year) %>% mutate(na.n = sum(is.na(min.t))) %>% 
+  group_by(year) %>% mutate(na.n = sum(is.na(TNK))) %>% 
   ungroup()
 
 # 4) Number of frost days ####
 
-merk2 <- merk4 %>%
-  filter(merk4$min.t < 0 ) %>%
+station2 <- station4 %>%
+  filter(station4$TNK < 0 ) %>%
   group_by(year) %>% count()
  
 
 # 5) Average annual values ####
-mean <- mean(merk2$n)  #112.0769 days
+mean <- mean(station2$n)  #112.0769 days
 
 # 6) delta second half/first half ####
-sec.half <- merk2  %>% filter(year >="1997",year <="2016")
-fr.half <- merk2 %>% filter(year >= "1977",year < "1997")
+sec.half <- station2  %>% filter(year >="1997",year <="2016")
+fr.half <- station2 %>% filter(year >= "1977",year < "1997")
 
 sec.mean <- if(length(sec.half$year>10)){mean(sec.half$n)} #111.95
 
@@ -55,7 +61,4 @@ return(output)
 
 }
 
-# Now replace data_name with the name of your data and insert your station ID to run the function.
-# The first output in the list is the frost days mean(Fd), the second value is the rate of change.
-
-# fun_frostdays(data_name,2814)
+fun_frostdays(data_name, station_id)
