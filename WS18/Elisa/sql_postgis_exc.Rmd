@@ -89,7 +89,7 @@ from stations
 
 ```
 ```{sql connection=con}
-select * from dist_to_herd where distance_toherdabau <15000
+select * from dist_to_herd where distance_toherdabau <1500
 ```
 ```{sql connection=con}
 
