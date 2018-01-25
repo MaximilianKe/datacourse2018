@@ -28,7 +28,7 @@ do_it <- function(ID, path){
   rm(fun_frostdays)
   source("climate_indices/ETR.R")
   source("climate_indices/GSL.R")
-  source("climate_indices/HWDI(marvin).R")
+  source("climate_indices/HWDI_2).R")
   source("climate_indices/Tn90.R")
   source("climate_indices/R10.R")
   source("climate_indices/CDD.R")
@@ -64,7 +64,7 @@ do_it <- function(ID, path){
     result_total$average_Tn90[i] <-  result_Tn90$avg
     result_total$change_Tn90[i] <-  result_Tn90$rate_of_change
     
-    #einlesen als data.fram für HWDI nötig
+    #einlesen als data.frame für HWDI nötig
     data_siggi <- read.csv(path, sep = "\t", dec = ".", header = TRUE)
     result_HWDI <- HWDI(data_siggi, ID[i])
     result_total$average_HWDI[i] <-  result_HWDI$HWI_mean
