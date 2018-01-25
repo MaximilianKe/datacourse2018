@@ -80,8 +80,8 @@ do_it <- function(ID, path){
     result_total$change_CDD[i] <- result_CDD$rate.of.change
     
     result_R5d <- R5d(bw = raw_data, idstation = ID[i])
-    result_total$average_R5d[i] <- result_R5d[[3]]
-    result_total$change_R5d[i] <- result_R5d[[2]]
+    result_total$average_R5d[i] <- result_R5d[[2]]
+    result_total$change_R5d[i] <- result_R5d[[3]]
     
     result_SDII <- SDII(data = raw_data, ID = ID[i])
     result_total$average_SDII[i] <- result_SDII$total_mean
