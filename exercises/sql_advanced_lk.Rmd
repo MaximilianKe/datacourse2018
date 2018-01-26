@@ -79,9 +79,9 @@ order by monthly_sum desc limit 1
 
 Which station observed the most extreme rainfall occurences within one month? Which within one year?
 ```{sql connection=con}
-select id, extremes_m as extremes, month as date from lk_precipitation_monthly where extremes_m = (select max(extremes_m) from lk_precipitation_monthly)
+select 'within a month' as most_extreme_rainfalls, id, extremes_m as extremes, month as date from lk_precipitation_monthly where extremes_m = (select max(extremes_m) from lk_precipitation_monthly)
 union
-select id, extremes_y as extremes, year as date from lk_precipitation_yearly where extremes_y = (select max(extremes_y) from lk_precipitation_yearly)
+select 'within a year' as most_extreme_rainfalls, id, extremes_y as extremes, year as date from lk_precipitation_yearly where extremes_y = (select max(extremes_y) from lk_precipitation_yearly)
 
 ```
 
@@ -130,18 +130,30 @@ hist(hist$type_of_prec)
 
 **OPTIONAL:** Can you redo the last step and do the same analysis for 'per station' histograms?
 ```{sql connection=con, output.var="hist2"}
-select  id, type_of_prec, count(type_of_prec) as amount from extr_prec_type_lk group by id, type_of_prec 
-```
-```{r}
-hist(hist2$type_of_prec)
+select distinct  id, type_of_prec from extr_prec_type_lk group by id, type_of_prec order by id asc 
+-- with further query 'where id = id' one could plot the histograms per station
 ```
 
 
 Use the insights of the last two chunks and write two sentences about the _type of precipitation_ variable. How useful is it? 
 <div class="alert alert-info">
-Answer: The variable shows the aggregate state of the precipitation. Therefore the measurements of measurement can be described more precisely. With the count(type_of_prec) the occurence and distribution per station of the different types can be shown.
-
+Answer: The variable shows the aggregate state of the precipitation. Therefore the measurements can be described more precisely. This shows that extreme precipitation (constraint: daily precipitation > 30 mm) occur not just as liquid precipitation. If this distribution changes with a higher threshold, could be checked. The threshold for a extrme precipitation event, set by the german weather service, is > 25 mm/h or 35 mm within 6 hours. If one set this threshold (see below), there are logically lower frequency, but no clear change in the distribution of 'type of precipitation'.
 </div>
+
+
+```{sql connection=con, output.var="hist3"}
+select extr.id, extr.date, prec, type_of_prec
+from
+  (select id, date, value as prec from data where variable_id = 1 and value > 70) extr
+  join
+  (select id, date, value as type_of_prec from data where variable_id = 3) type_of_prec
+on type_of_prec.id=extr.id and type_of_prec.date=extr.date
+```
+
+```{r}
+hist(hist3$type_of_prec)
+```
+
 
 Load the anual overview on extreme rainfalls into a data.frame and plot a violine plot of the amount of extreme rainfalls per station.
 ```{sql connection=con, output.var="rain.annual"}
