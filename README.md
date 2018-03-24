@@ -1,4 +1,4 @@
-# Course: Data storage | Data collection | Data management
+# Course description
 
 ### Introduction
 
